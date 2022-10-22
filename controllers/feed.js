@@ -1,5 +1,6 @@
 const { validationResult } = require("express-validator");
 const Post = require("../models/post");
+const User = require("../models/user");
 const { clearImage, clearPath } = require("../helpers/image");
 
 exports.getPosts = (req, res, next) => {
@@ -16,13 +17,11 @@ exports.getPosts = (req, res, next) => {
         .limit(perPage);
     })
     .then((posts) => {
-      res
-        .status(200)
-        .json({
-          message: "Posts fetched",
-          posts: posts,
-          totalItems: totalItems,
-        });
+      res.status(200).json({
+        message: "Posts fetched",
+        posts: posts,
+        totalItems: totalItems,
+      });
     })
     .catch((error) => {
       if (!error.statusCode) {
@@ -48,19 +47,29 @@ exports.createPost = (req, res, next) => {
 
   const { title, content } = req.body;
   const imageUrl = clearPath(req.file.path);
+  let creator;
   const post = new Post({
     title: title,
     content: content,
     imageUrl: imageUrl,
-    creator: { name: "Omael" },
+    creator: req.userId,
   });
 
   post
     .save()
     .then((result) => {
+      return User.findById(req.userId);
+    })
+    .then((user) => {
+      creator = user;
+      user.posts.push(post);
+      return user.save();
+    })
+    .then((result) => {
       res.status(201).json({
         message: "Post created successfully",
         post: post,
+        creator: { _id: creator._id.toString(), name: creator.name },
       });
     })
     .catch((error) => {
@@ -118,8 +127,16 @@ exports.updatePost = (req, res, next) => {
     .then((post) => {
       console.log(post);
       if (!post) {
-        const error = new Error(`Post with id ${postId} Not found`);
+        const error = new Error(`Post with id ${postId}`);
         error.statusCode = 404;
+        throw error;
+      }
+
+      if (post.creator.toString() !== req.userId.toString()) {
+        const error = new Error(
+          `Not authorization for edit Post with id ${postId}`
+        );
+        error.statusCode = 403;
         throw error;
       }
 
@@ -155,10 +172,25 @@ exports.deletePost = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
+      if (post.creator.toString() !== req.userId.toString()) {
+        const error = new Error(
+          `Not authorization for delete Post with id ${postId}`
+        );
+        error.statusCode = 403;
+        throw error;
+      }
+
       return post.deleteOne();
     })
     .then((result) => {
       clearImage(result.imageUrl);
+      return User.findById(req.userId);
+    })
+    .then((user) => {
+      user.posts.pull(postId);
+      return user.save();
+    })
+    .then((data) => {
       res.status(200).json({ message: "Post deleted!", post: result });
     })
     .catch((error) => {

@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require("uuid");
 const { appPort, dbUrl } = require("./config/app");
 
 const feedRoutes = require("./routes/feed");
+const authRoutes = require("./routes/auth");
 const { errorHandler } = require("./handler/error");
 
 const app = express();
@@ -51,6 +52,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/feed", feedRoutes);
+app.use("/auth", authRoutes);
 
 app.use(errorHandler);
 
