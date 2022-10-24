@@ -59,7 +59,12 @@ app.use(errorHandler);
 mongoose
   .connect(dbUrl)
   .then((result) => {
-    app.listen(appPort);
+    const server = app.listen(appPort);
+    const io = require("socket.io")(server);
+
+    io.on("connection", (socket) => {
+      console.log("Client connected");
+    });
   })
   .catch((error) => {
     console.log(error);
