@@ -60,7 +60,8 @@ mongoose
   .connect(dbUrl)
   .then((result) => {
     const server = app.listen(appPort);
-    const io = require("socket.io")(server);
+    console.log("app start in port " + appPort);
+    const io = require("./socket").init(server);
 
     io.on("connection", (socket) => {
       console.log("Client connected");
