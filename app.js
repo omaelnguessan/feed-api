@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require("uuid");
 const { appPort, dbUrl } = require("./config/app");
 
 const feedRoutes = require("./routes/feed");
+const authRoutes = require("./routes/auth");
 const { errorHandler } = require("./handler/error");
 
 const app = express();
@@ -51,13 +52,20 @@ app.use((req, res, next) => {
 });
 
 app.use("/feed", feedRoutes);
+app.use("/auth", authRoutes);
 
 app.use(errorHandler);
 
 mongoose
   .connect(dbUrl)
   .then((result) => {
-    app.listen(appPort);
+    const server = app.listen(appPort);
+    console.log("app start in port " + appPort);
+    const io = require("./socket").init(server);
+
+    io.on("connection", (socket) => {
+      console.log("Client connected");
+    });
   })
   .catch((error) => {
     console.log(error);
